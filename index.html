@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+	<meta name="robots" content="noindex,follow">
+	<script src="src/jquery.js"></script>
+	<script src="src/jquery.fancytree.ui-deps.js"></script>
+
+	<link href="src/ui.fancytree.css" rel="stylesheet">
+	<script src="src/jquery.fancytree.js"></script>
+	<script src="src/sample.js"></script>
+	<title>Common Library - SOP Master</title>
+
+<style type="text/css">
+body {
+	/*background-color: #39414A;*/
+	background-color: #FBF8F8;
+	color: #353333;
+	font-family: Helvetica, Arial, sans-serif;
+	font-size: smaller;
+	background-image: url("src/src/nav_bg.png");
+	background-repeat: repeat-x;
+}
+div#tree {
+	
+	/*
+	position: absolute;
+	height: 95%;
+	width: 95%;
+	
+	overflow-y: scroll;
+min-width: 200px;
+height: 90%;
+	padding: 2px;
+	margin-right: 5px;
+	border: double #1F1C1C; */
+	padding: 5px;
+}
+ul.fancytree-container {
+	position: absolute;
+	height: 90%;
+	width: 300px;
+	overflow: auto;
+	background-color: transparent;
+}
+span.fancytree-node span.fancytree-title {
+	color: #353333;
+	text-decoration: none;
+}
+span.fancytree-focused span.fancytree-title {
+	outline-color: #353333;
+}
+span.fancytree-node:hover span.fancytree-title,
+span.fancytree-active span.fancytree-title,
+span.fancytree-active.fancytree-focused span.fancytree-title,
+.fancytree-treefocus span.fancytree-title:hover,
+.fancytree-treefocus span.fancytree-active span.fancytree-title {
+	color: #39414A;
+}
+/*span.external span.fancytree-title:after {
+	content: "";
+	background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAMAAAC67D+PAAAAFVBMVEVmmcwzmcyZzP8AZswAZv////////9E6giVAAAAB3RSTlP///////8AGksDRgAAADhJREFUGFcly0ESAEAEA0Ei6/9P3sEcVB8kmrwFyni0bOeyyDpy9JTLEaOhQq7Ongf5FeMhHS/4AVnsAZubxDVmAAAAAElFTkSuQmCC") 100% 50% no-repeat;
+	padding-right: 13px;
+}*/
+/* Remove system outline for focused container */
+.ui-fancytree.fancytree-container:focus {
+	outline: none;
+}
+.ui-fancytree.fancytree-container {
+	border: none;
+}
+</style>
+
+<script type="text/javascript">
+$(function(){
+	// --- Initialize sample trees
+	$("#tree").fancytree({
+		autoActivate: false, // we use scheduleAction()
+		autoCollapse: true,
+//			autoFocus: true,
+		autoScroll: true,
+		clickFolderMode: 3, // expand with single click
+		minExpandLevel: 2,
+		tabindex: "-1", // we don't want the focus frame
+		// toggleEffect: { effect: "blind", options: {direction: "vertical", scale: "box"}, duration: 2000 },
+		// scrollParent: null, // use $container
+		tooltip: function(event, data) {
+			return data.node.title;
+		},
+		focus: function(event, data) {
+			var node = data.node;
+			// Auto-activate focused node after 1 second
+			if(node.data.href){
+				node.scheduleAction("activate", 1000);
+			}
+		},
+		blur: function(event, data) {
+			data.node.scheduleAction("cancel");
+		},
+		beforeActivate: function(event, data){
+			var node = data.node;
+
+			if( node.data.href && node.data.target === "_blank") {
+				alert("1");
+				window.open(node.data.href, "_blank");
+				return false; // don't activate
+			}
+		},
+		
+		activate: function(event, data){
+			var node = data.node,
+				orgEvent = data.originalEvent || {};
+
+			// Open href (force new window if Ctrl is pressed)
+			if(node.data.href){
+				//window.open(node.data.href, (orgEvent.ctrlKey || orgEvent.metaKey) ? "_blank" : node.data.target);
+			}
+			// When an external link was clicked, we don't want the node to become
+			// active. Also the URL fragment should not be changed
+			if( node.data.target === "_blank") {
+				return false;
+			}
+			// Append #HREF to URL without actually loading content
+			// (We check for this value on page load re-activate the node.)
+			if( window.parent &&  parent.history && parent.history.pushState ) {
+				//alert("2");
+				//alert(node.data.href);
+				window.frames['frmViewFile'].location = node.data.href;
+				//parent.history.pushState({title: node.title}, "", "#" + (node.data.href || ""));
+			}
+		},
+		click: function(event, data){
+			// We implement this in the `click` event, because `activate` is not
+			// triggered if the node already was active.
+			// We want to allow re-loads by clicking again.
+			var node = data.node,
+				orgEvent = data.originalEvent;
+
+			// Open href (force new window if Ctrl is pressed)
+			if(node.isActive() && node.data.href){
+				alert("3");
+				alert(node.data.href);
+				//window.open(node.data.href, (orgEvent.ctrlKey || orgEvent.metaKey) ? "_blank" : node.data.target);
+				window.frames['frmViewFile'].location = node.data.href;
+			}
+		}
+	});
+	// On page load, activate node if node.data.href matches the url#href
+	
+	var tree = $(":ui-fancytree").fancytree("getTree"),
+		frameHash = window.parent && window.parent.location.hash;
+
+	if( frameHash ) {
+		frameHash = frameHash.replace("#", "");
+		tree.visit(function(n) {
+			if( n.data.href && n.data.href === frameHash ) {
+				n.setActive();
+				return false; // done: break traversal
+			}
+		});
+	}
+});
+
+function viewFile(filePath){
+	alert(filePath);
+	window.frames['frmViewFile'].location = filePath;
+}
+	
+</script>
+
+</head>
+
+<body>
+<table style="position: absolute; top: 0; bottom: 0; left: 0; right: 0;" height="100%" width="100%" border="0" cellpadding="0" cellspacing="0">	
+    <tr>
+      	<td valign="top" width="20%">			
+			<div id="tree">
+				<h3>&nbsp;&nbsp;Common Library - SOP Master</h3>
+				<ul>
+					<li class="folder expanded">Event-Automation
+						<ul>
+							<li class="folder">Database
+								<ul>
+									<li class="folder">DB2
+										<ul>
+											<li class="folder">Diagnosis
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+									<li class="folder">MSSQL
+										<ul>
+											<li class="folder">Diagnosis
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+									<li class="folder">Oracle
+										<ul>
+											<li class="folder">Diagnosis
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+									<li class="folder">Sybase
+										<ul>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>										
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="folder">Middleware
+								<ul>
+									<li class="folder">Citrix
+										<ul>
+											<li class="folder">Diagnosis
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+									<li class="folder">Domino
+										<ul>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+									<li class="folder">Exchange
+										<ul>
+											<li class="folder">Diagnosis
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+									<li class="folder">Others
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+									<li class="folder">SAP
+										<ul>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>										
+										</ul>
+									</li>
+									<li class="folder">WAS-MQ-WebSphere
+										<ul>
+											<li class="folder">Diagnosis
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="folder">Network
+								<ul>
+									<li class="folder">Diagnosis
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+									<li class="folder">Remediation
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="folder">Others
+								<ul>
+									<li class="folder">TWS
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+								</ul>
+							</li>
+							<li class="folder">Platform
+								<ul>
+									<li class="folder">Other
+										<ul>
+											<li class="folder">Common
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>
+											<li class="folder">Iseries
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+											<li class="folder">VIOS
+												<ul>												
+													<li class="folder">Diagnosis
+														<ul>
+															<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+														</ul>
+													</li>
+													<li class="folder">Remediation
+														<ul>
+															<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+														</ul>
+													</li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+									<li class="folder">Unix
+										<ul>
+											<li class="folder">Diagnosis
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+									<li class="folder">Windows
+										<ul>
+											<li class="folder">Diagnosis
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+												</ul>
+											</li>
+											<li class="folder">Remediation
+												<ul>
+													<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="folder">Storage
+								<ul>
+									<li class="folder">Diagnosis
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+									<li class="folder">Remediation
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="folder">TBO
+								<ul>
+									<li class="folder">Remediation
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="folder">TSM
+								<ul>
+									<li class="folder">Diagnosis
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+									<li class="folder">Remediation
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="folder">VMware
+								<ul>
+									<li class="folder">Diagnosis
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+									<li class="folder">Remediation
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</li>
+					<li class="folder">GEO-Process-Doc
+						<ul>
+							<li class="folder">AP
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+								</ul>
+							</li>
+							<li class="folder">EU
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+								</ul>
+							</li>
+							<li class="folder">AP
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+								</ul>
+							</li>
+							<li class="folder">JPN
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+								</ul>
+							</li>
+							<li class="folder">LA
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+								</ul>
+							</li>
+							<li class="folder">MEA
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Remediation/AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart.pdf">AP_GEN_UNIX_DB2_R_C_DB2 Instance ReStart</a></li>
+								</ul>
+							</li>
+						</ul>
+					</li>
+					<li class="folder">Schedule-Automation
+						<ul>
+							<li class="folder">Network
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+								</ul>
+							</li>
+							<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+						</ul>
+					</li>
+					<li class="folder">Service-Request-Automation
+						<ul>
+							<li class="folder">Diagnosis
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+								</ul>
+							</li>
+							<li class="folder">ID-Management
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+								</ul>
+							</li>
+							<li class="folder">Remediation
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+								</ul>
+							</li>
+						</ul>
+					</li>
+					<li class="folder">Standard-golden-kitty
+						<ul>
+							<li class="folder">Test Cases
+								<ul>
+									<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+								</ul>
+							</li>
+							<li class="folder">Unix
+								<ul>
+									<li class="folder">Diagnosis
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+									<li class="folder">Remediation
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="folder">Windows
+								<ul>
+									<li class="folder">Diagnosis
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+									<li class="folder">Remediation
+										<ul>
+											<li><a target="content" href="commonlibrary_sop-master/Event-Automation/Database/DB2/Diagnosis/AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested.pdf">AP_GEN_UNIX_DB2_D_C_DB2 HADR Connection Congested</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</li>
+				</ul>
+			</div>
+		</td>
+      	<td align="center" height="730px" valign="top">
+		  <iframe height="100%" align="middle" width="100%" src="" name="frmViewFile" frameBorder="0"></iframe>
+		</td>
+    </tr>
+   
+</table>	
+	
+</body>
+</html>
